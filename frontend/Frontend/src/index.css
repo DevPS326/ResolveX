@@ -1,0 +1,32 @@
+/* Global Tactical Reset */
+* {
+  box-sizing: border-box; /* Padding elements ko stretch nahi karegi */
+  margin: 0;
+  padding: 0;
+  cursor: crosshair; /* Pro-coder vibe ke liye cursor change */
+}
+
+body {
+  /* System font for maximum performance */
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background-color: #050b18; /* Deep space black theme */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden; /* Side scrolling block */
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar for the Control Room */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00f2ff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #00f2ff;
+}
