@@ -7,6 +7,7 @@ const cors     = require('cors');
 const mongoose = require('mongoose');
 
 const healthRouter      = require('./routes/health');
+const configRouter      = require('./routes/config');
 const syncRouter        = require('./routes/sync');
 const compareRouter     = require('./routes/compare');
 const rivalsRouter      = require('./routes/rivals');
@@ -25,6 +26,7 @@ app.use(express.json());
 
 // --- Routes ---
 app.use('/api/health',   healthRouter);
+app.use('/api/config',   configRouter);
 app.use('/api/sync',     syncRouter);
 app.use('/api/rivals',   rivalsRouter);
 app.use('/api/activity', activityRouter);
