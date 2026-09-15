@@ -1,19 +1,23 @@
-import { Link } from 'react-router-dom';
-
 const LEVEL_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2, NONE: 3 };
+
+function evidenceLabel(evidence) {
+  if (!evidence) return 'no rated evidence';
+  if (evidence.q75Rating) return `q75 ${evidence.q75Rating}`;
+  return `${evidence.solvedCount || 0} solves`;
+}
 
 export default function SkillGapPanel({ skillGaps }) {
   if (!skillGaps || skillGaps.length === 0) {
     return (
       <div className="gap-section">
         <h2>Skill Gaps</h2>
-        <div className="empty-state">No gap data yet — sync and run analytics.</div>
+        <div className="empty-state">No high-confidence peer-backed gaps right now.</div>
       </div>
     );
   }
 
   const gaps = skillGaps
-    .filter(g => g.gapLevel !== 'NONE')
+    .filter(g => g.actionable !== false && (g.gapLevel === 'HIGH' || g.gapLevel === 'MEDIUM'))
     .sort((a, b) => (LEVEL_ORDER[a.gapLevel] ?? 3) - (LEVEL_ORDER[b.gapLevel] ?? 3))
     .slice(0, 5);
 
@@ -21,21 +25,22 @@ export default function SkillGapPanel({ skillGaps }) {
     return (
       <div className="gap-section">
         <h2>Skill Gaps</h2>
-        <div className="empty-state">No significant gaps detected.</div>
+        <div className="empty-state">No high-confidence peer-backed gaps right now.</div>
       </div>
     );
   }
 
-  const myMax   = Math.max(...gaps.map(g => g.myScore || 0), 0.001);
-  const peerMax = Math.max(...gaps.map(g => g.peerAvgScore || 0), 0.001);
-  const absMax  = Math.max(myMax, peerMax);
+  const absMax = Math.max(
+    ...gaps.flatMap(g => [g.myScore || 0, g.peerAvgScore || 0]),
+    0.001
+  );
 
   return (
     <div className="gap-section">
       <h2>Skill Gaps</h2>
       <div className="gap-cards">
         {gaps.map(g => {
-          const myPct   = Math.min((g.myScore || 0) / absMax * 100, 100);
+          const myPct = Math.min((g.myScore || 0) / absMax * 100, 100);
           const peerPct = Math.min((g.peerAvgScore || 0) / absMax * 100, 100);
           return (
             <div key={g.tag} className="gap-card">
@@ -50,21 +55,26 @@ export default function SkillGapPanel({ skillGaps }) {
                   <div className="gap-bar-track">
                     <div className="gap-bar-fill gap-bar-me" style={{ width: `${myPct}%` }} />
                   </div>
-                  <span className="gap-bar-count">{(g.myScore * 100).toFixed(0)}%</span>
+                  <span className="gap-bar-count">{evidenceLabel(g.myEvidence)}</span>
                 </div>
                 <div className="gap-bar-row">
-                  <span className="gap-bar-label">Peers</span>
+                  <span className="gap-bar-label">Peer</span>
                   <div className="gap-bar-track">
                     <div className="gap-bar-fill gap-bar-peer" style={{ width: `${peerPct}%` }} />
                   </div>
-                  <span className="gap-bar-count">{(g.peerAvgScore * 100).toFixed(0)}%</span>
+                  <span className="gap-bar-count">{evidenceLabel(g.peerEvidence)}</span>
                 </div>
               </div>
 
               <div className="gap-context">
-                <span><span className="dot-me" /> my exposure</span>
-                <span><span className="dot-peer" /> peer avg</span>
+                <span><span className="dot-me" /> {g.myEvidence?.solvedCount || 0} solves</span>
+                <span><span className="dot-peer" /> {g.benchmarkPeer || 'peer'} · {g.peerEvidence?.solvedCount || 0} solves</span>
               </div>
+              {g.reason && (
+                <div className="gap-context" style={{ display: 'block', marginTop: 8 }}>
+                  {g.reason} {g.confidence ? `(${g.confidence.toLowerCase()} confidence)` : ''}
+                </div>
+              )}
             </div>
           );
         })}
