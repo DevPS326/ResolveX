@@ -1,17 +1,29 @@
-// API base URL is empty in local dev (Vite proxy handles /api),
-// and can be set to the deployed backend in production via VITE_API_URL.
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+// Local dev uses Vite proxy. Production falls back to the deployed Render API
+// so the app still works even if VITE_API_URL was not injected into a build.
+const PROD_API_FALLBACK = 'https://resolvex-api-gw5y.onrender.com';
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? PROD_API_FALLBACK : '')
+).replace(/\/$/, '');
+
 const url = (path) => `${API_BASE}${path}`;
 
+async function parseJsonResponse(response) {
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`API ${response.status}: ${text.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
 export const api = {
-  get: (path) => fetch(url(path)).then(r => r.json()),
+  get: (path) => fetch(url(path)).then(parseJsonResponse),
   post: (path, body = {}) => fetch(url(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
-  }).then(r => r.json()),
+  }).then(parseJsonResponse),
 
-  // Specific endpoints
   sync:         () => api.post('/api/sync'),
   syncStatus:   () => api.get('/api/sync/status'),
   rivals:       () => api.get('/api/rivals'),
