@@ -119,7 +119,7 @@ function evaluateTagGap(myStats, peerStats, context = {}) {
   }
 
   const myTag = myStats || { solvedCount: 0, ratedCount: 0, recentCount: 0, q75Rating: null };
-  const myDifficulty = myTag.q75Rating != null ? myTag.q75Rating : myDifficultyFloor;
+  const myDifficulty = Math.max(myTag.q75Rating || 0, myDifficultyFloor);
   const difficultyDelta = peerStats.q75Rating - myDifficulty;
 
   // A substantially lower-rated peer doing more easy problems is not evidence
@@ -163,18 +163,17 @@ function confidenceFor(peerStats, supportingPeerCount) {
   return 'LOW';
 }
 
-function buildGapReason(tag, myStats, peerStats, benchmarkHandle, difficultyDelta) {
+function buildGapReason(tag, myStats, peerStats, benchmarkHandle, difficultyDelta, myComparableDifficulty) {
   const myCount = myStats?.solvedCount || 0;
-  const myQ75 = myStats?.q75Rating;
   const peerQ75 = peerStats?.q75Rating;
   const peerCount = peerStats?.solvedCount || 0;
 
-  if (myCount === 0) {
-    return `${benchmarkHandle} has ${peerCount} ${tag} solves with a 75th-percentile difficulty around ${peerQ75}. You have no rated ${tag} solve in the synced history.`;
+  if (!myStats || (myStats.ratedCount || 0) === 0) {
+    return `${benchmarkHandle} has ${peerCount} rated ${tag} solves with a 75th-percentile difficulty around ${peerQ75}. You have no rated ${tag} solve in the synced history.`;
   }
 
   if (difficultyDelta >= 100) {
-    return `${benchmarkHandle}'s ${tag} benchmark is about ${Math.round(difficultyDelta / 100) * 100} rating points higher (${peerQ75} vs ${myQ75}).`;
+    return `${benchmarkHandle}'s ${tag} benchmark is about ${Math.round(difficultyDelta / 100) * 100} rating points higher (${peerQ75} vs your ${myComparableDifficulty} rating/history benchmark).`;
   }
 
   return `${benchmarkHandle} has stronger repeated ${tag} evidence (${peerCount} solves vs ${myCount}) at comparable difficulty.`;
@@ -256,7 +255,7 @@ async function computeSkillGaps(myHandle, friendHandles) {
       myDifficultyFloor
     });
 
-    const myComparableDifficulty = myStats?.q75Rating ?? myDifficultyFloor;
+    const myComparableDifficulty = Math.max(myStats?.q75Rating || 0, myDifficultyFloor);
     const supportingPeerCount = candidates.filter(c =>
       c.stats.q75Rating != null && c.stats.q75Rating >= myComparableDifficulty + 100
     ).length;
@@ -285,15 +284,17 @@ async function computeSkillGaps(myHandle, friendHandles) {
         solvedCount: myStats?.solvedCount || 0,
         ratedCount: myStats?.ratedCount || 0,
         recentCount: myStats?.recentCount || 0,
-        q75Rating: myStats?.q75Rating || null
+        q75Rating: myStats?.q75Rating || null,
+        comparisonRating: myComparableDifficulty
       },
       peerEvidence: {
         solvedCount: benchmark.stats.solvedCount,
         ratedCount: benchmark.stats.ratedCount,
         recentCount: benchmark.stats.recentCount,
-        q75Rating: benchmark.stats.q75Rating
+        q75Rating: benchmark.stats.q75Rating,
+        comparisonRating: benchmark.stats.q75Rating
       },
-      reason: buildGapReason(tag, myStats, benchmark.stats, benchmark.handle, evaluation.difficultyDelta)
+      reason: buildGapReason(tag, myStats, benchmark.stats, benchmark.handle, evaluation.difficultyDelta, myComparableDifficulty)
     });
   }
 
