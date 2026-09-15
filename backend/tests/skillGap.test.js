@@ -57,6 +57,17 @@ describe('evaluateTagGap', () => {
     expect(result.gapLevel).toBe('NONE');
   });
 
+  test('uses elite rating/history as a floor even when old tag q75 is lower', () => {
+    const result = evaluateTagGap(
+      { solvedCount: 100, ratedCount: 100, recentCount: 1, q75Rating: 2100 },
+      { solvedCount: 120, ratedCount: 120, recentCount: 8, q75Rating: 2500 },
+      { myRating: 3900, peerRating: 2400, myDifficultyFloor: 3300 }
+    );
+
+    expect(result.gapLevel).toBe('NONE');
+    expect(result.difficultyDelta).toBe(-800);
+  });
+
   test('detects a genuine difficulty-backed gap', () => {
     const result = evaluateTagGap(
       { solvedCount: 2, ratedCount: 2, recentCount: 1, q75Rating: 1300 },
@@ -65,7 +76,7 @@ describe('evaluateTagGap', () => {
     );
 
     expect(['HIGH', 'MEDIUM']).toContain(result.gapLevel);
-    expect(result.difficultyDelta).toBe(500);
+    expect(result.difficultyDelta).toBe(400);
   });
 
   test('raw volume alone cannot create a medium/high gap at equal difficulty', () => {
