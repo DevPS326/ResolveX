@@ -39,7 +39,7 @@ function buildAttentionItems(journeys, skillGaps, targets) {
   }
 
   // Top gap
-  const topGap = skillGaps.find(g => g.gapLevel !== 'NONE');
+  const topGap = skillGaps.find(g => g.actionable !== false && (g.gapLevel === 'HIGH' || g.gapLevel === 'MEDIUM'));
   if (topGap) items.push({ type: 'gap', gap: topGap });
 
   // Top target
@@ -56,7 +56,7 @@ function IntelStrip({ rivals, journeys, skillGaps, syncStatus, lastFetch, nowSec
   }).length;
 
   const multiJourneys = journeys.filter(j => j.attemptCount >= 3).length;
-  const topGap = skillGaps.find(g => g.gapLevel !== 'NONE');
+  const topGap = skillGaps.find(g => g.actionable !== false && (g.gapLevel === 'HIGH' || g.gapLevel === 'MEDIUM'));
   const activePeers = rivals.filter(r => (r.velocity || 0) > 0).length;
 
   const updatedAgo = lastFetch
@@ -146,7 +146,7 @@ function AttentionCard({ item }) {
         <div className="ac-type gap">Practice opportunity</div>
         <div className="ac-title">{g.tag}</div>
         <div className="ac-sub">
-          Peer exposure significantly higher than yours
+          {g.reason || 'Peer evidence is stronger at a higher demonstrated difficulty.'}
         </div>
         <div className="ac-meta">
           <span className={`gap-badge ${g.gapLevel}`}>{g.gapLevel} GAP</span>
@@ -248,6 +248,7 @@ export default function Dashboard() {
   const [lastFetch,       setLastFetch]       = useState(null);
   const [showAllPeers,    setShowAllPeers]    = useState(false);
   const pollRef = useRef(null);
+  const analyticsRefreshPendingRef = useRef(false);
 
   const fetchCore = useCallback(async () => {
     try {
@@ -301,8 +302,23 @@ export default function Dashboard() {
     };
   }, [fetchCore]);
 
+  // Recommendations must be computed only after a sync settles. Clear stale
+  // advice while syncing, then refresh analytics from the completed history.
+  useEffect(() => {
+    if (!analyticsRefreshPendingRef.current || !syncStatus) return;
+    const handles = syncStatus.handles || [];
+    const settled = !syncStatus.jobRunning && handles.length > 0 && handles.every(h => h.status !== 'running');
+    if (!settled) return;
+
+    analyticsRefreshPendingRef.current = false;
+    fetchAnalytics();
+  }, [syncStatus, fetchAnalytics]);
+
   const triggerSync = async () => {
     setSyncing(true);
+    analyticsRefreshPendingRef.current = true;
+    setSkillGaps([]);
+    setLearningTargets([]);
     try {
       await api.sync();
       // Brief poll to pick up status change
@@ -371,7 +387,7 @@ export default function Dashboard() {
           <button className="btn btn-primary btn-sm" onClick={triggerSync} disabled={isSyncing}>
             {syncing ? 'Starting…' : 'Sync all'}
           </button>
-          <button className="btn btn-subtle btn-sm" onClick={fetchCore}>
+          <button className="btn btn-subtle btn-sm" onClick={() => { fetchCore(); fetchAnalytics(); }}>
             Refresh
           </button>
           <button className="btn btn-subtle btn-sm" onClick={loadLegacy} disabled={legacyLoading}>
