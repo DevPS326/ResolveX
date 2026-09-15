@@ -52,11 +52,20 @@ const queue = new RateLimitedQueue(REQUEST_INTERVAL_MS);
  */
 async function cfGet (url) {
   return queue.enqueue(async () => {
-    const res = await axios.get(url, { timeout: 15000 });
-    if (res.data.status !== 'OK') {
-      throw new Error(res.data.comment || `CF API error: ${res.data.status}`);
+    try {
+      const res = await axios.get(url, { timeout: 15000 });
+      if (res.data.status !== 'OK') {
+        throw new Error(res.data.comment || `CF API error: ${res.data.status}`);
+      }
+      return res.data.result;
+    } catch (err) {
+      // CF reports a bad request as HTTP 400 with { status, comment }, which
+      // axios throws on before the check above ever runs. Lift the comment out
+      // so callers learn which handle was rejected instead of 'status code 400'.
+      const comment = err.response && err.response.data && err.response.data.comment;
+      if (comment) throw new Error(comment);
+      throw err;
     }
-    return res.data.result;
   });
 }
 

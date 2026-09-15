@@ -63,7 +63,8 @@ async function saveTrackerConfig(meHandle, friends = []) {
   try {
     users = await getUserInfo(requested);
   } catch (err) {
-    throw new Error(`Codeforces handle validation failed: ${err.message}`);
+    const detail = String(err.message || '').replace(/^handles:\s*/i, '');
+    throw new Error(`Codeforces handle validation failed: ${detail}`);
   }
 
   const canonicalByLower = new Map(
