@@ -1,34 +1,27 @@
 'use strict';
 
-/**
- * Legacy /compare-all endpoint.
- * Preserved exactly from the original server.js.
- * Makes live Codeforces API calls — does not require a DB sync.
- */
-
 const express = require('express');
 const axios   = require('axios');
-const { ME, FRIENDS } = require('../config/handles');
+const { getTrackerConfig } = require('../services/trackerConfigService');
 
 const router = express.Router();
-
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const analyzeUser = async (handle) => {
   try {
     const [statusRes, infoRes] = await Promise.all([
-      axios.get(`https://codeforces.com/api/user.status?handle=${handle}`),
-      axios.get(`https://codeforces.com/api/user.info?handles=${handle}`)
+      axios.get(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}`),
+      axios.get(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(handle)}`)
     ]);
 
-    const solved    = new Map();
-    const tagStats  = {};
-    let   velocity  = 0;
+    const solved = new Map();
+    const tagStats = {};
+    let velocity = 0;
     const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
 
     statusRes.data.result.forEach(sub => {
       if (sub.verdict === 'OK') {
-        const p  = sub.problem;
+        const p = sub.problem;
         const id = `${p.contestId}${p.index}`;
         solved.set(id, {
           id, contestId: p.contestId, index: p.index,
@@ -45,27 +38,32 @@ const analyzeUser = async (handle) => {
       solved,
       tagStats,
       velocity,
-      rating:     info.rating    || 0,
-      rank:       info.rank      || 'unrated',
+      rating: info.rating || 0,
+      rank: info.rank || 'unrated',
       lastOnline: info.lastOnlineTimeSeconds
     };
-  } catch (e) {
+  } catch (_e) {
     return { handle, solved: new Map(), tagStats: {}, velocity: 0, lastOnline: 0 };
   }
 };
 
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
-    const meData      = await analyzeUser(ME);
+    const { configured, meHandle, friends } = await getTrackerConfig();
+    if (!configured) {
+      return res.status(400).json({ error: 'Tracker setup is required first.' });
+    }
+
+    const meData = await analyzeUser(meHandle);
     const friendsData = [];
 
-    for (const f of FRIENDS) {
+    for (const f of friends) {
       const d = await analyzeUser(f);
       friendsData.push(d);
       await delay(350);
     }
 
-    const missedMap            = new Map();
+    const missedMap = new Map();
     const allTagsAcrossFriends = new Set();
 
     friendsData.forEach(f => {
@@ -107,23 +105,23 @@ router.get('/', async (req, res) => {
 
     res.json({
       me: {
-        handle:     ME,
+        handle: meHandle,
         solvedCount: meData.solved.size,
-        myTags:     meData.tagStats,
-        rating:     meData.rating
+        myTags: meData.tagStats,
+        rating: meData.rating
       },
       categorized,
       allAvailableTags: Array.from(allTagsAcrossFriends).sort(),
       rivals: friendsData.map(f => ({
-        handle:     f.handle,
-        rating:     f.rating,
-        rank:       f.rank,
+        handle: f.handle,
+        rating: f.rating,
+        rank: f.rank,
         lastOnline: f.lastOnline,
-        velocity:   f.velocity
+        velocity: f.velocity
       }))
     });
   } catch (err) {
-    res.status(500).json({ error: 'Tactical Error: API Limit Hit' });
+    res.status(500).json({ error: err.message || 'Tactical Error: API Limit Hit' });
   }
 });
 
