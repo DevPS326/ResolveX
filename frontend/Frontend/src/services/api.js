@@ -11,7 +11,14 @@ const url = (path) => `${API_BASE}${path}`;
 async function parseJsonResponse(response) {
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(`API ${response.status}: ${text.slice(0, 200)}`);
+    let message = text;
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed.error || parsed.message || text;
+    } catch {
+      // keep raw text
+    }
+    throw new Error(message || `API ${response.status}`);
   }
   return response.json();
 }
@@ -23,6 +30,14 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(parseJsonResponse),
+  put: (path, body = {}) => fetch(url(path), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(parseJsonResponse),
+
+  getConfig:    () => api.get('/api/config'),
+  saveConfig:   (config) => api.put('/api/config', config),
 
   sync:         () => api.post('/api/sync'),
   syncStatus:   () => api.get('/api/sync/status'),
