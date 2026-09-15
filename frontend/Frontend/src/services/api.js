@@ -1,8 +1,11 @@
-// All API calls use relative paths — Vite proxies them to http://localhost:5000
+// API base URL is empty in local dev (Vite proxy handles /api),
+// and can be set to the deployed backend in production via VITE_API_URL.
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const url = (path) => `${API_BASE}${path}`;
 
 export const api = {
-  get: (path) => fetch(path).then(r => r.json()),
-  post: (path, body = {}) => fetch(path, {
+  get: (path) => fetch(url(path)).then(r => r.json()),
+  post: (path, body = {}) => fetch(url(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -29,12 +32,12 @@ export const api = {
   editorial: (contestId) =>
     api.get(`/api/editorials/${contestId}`),
 
-  skillGaps:     () => api.get('/api/analytics/skills'),
+  skillGaps:       () => api.get('/api/analytics/skills'),
   learningTargets: () => api.get('/api/analytics/learning'),
   friendFingerprint: (handle) => api.get(`/api/analytics/friends/${handle}`),
 
   evidenceSignal: (contestId, index, handle) =>
     api.get(`/api/analytics/problems/${contestId}/${index}/evidence/${handle}`),
 
-  compareAll: () => fetch('/compare-all').then(r => r.json()),
+  compareAll: () => api.get('/compare-all'),
 };
