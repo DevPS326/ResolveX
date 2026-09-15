@@ -2,7 +2,7 @@
 
 const { getUserInfo, fetchAllSubmissionsSince } = require('./codeforcesService');
 const { extractProblems } = require('./problemService');
-const { ALL_HANDLES } = require('../config/handles');
+const { getTrackerConfig } = require('./trackerConfigService');
 const User = require('../models/User');
 const Submission = require('../models/Submission');
 const SyncState = require('../models/SyncState');
@@ -11,10 +11,6 @@ const Problem = require('../models/Problem');
 // In-memory lock: prevents concurrent sync runs for the same handle
 const runningHandles = new Set();
 
-/**
- * Map a raw Codeforces submission object to our Submission schema.
- * Pure function — no DB calls.
- */
 function mapSubmission (handle, sub) {
   const contestId = sub.contestId != null
     ? sub.contestId
@@ -44,17 +40,6 @@ function mapSubmission (handle, sub) {
   };
 }
 
-/**
- * Sync a single handle:
- *  1. Fetch user info and upsert User document.
- *  2. Determine cursor (lastSyncedSubmissionId) from SyncState.
- *  3. Paginate user.status from CF until cursor is reached or history is exhausted.
- *  4. Bulk-upsert submissions (idempotent: $setOnInsert prevents overwrites).
- *  5. Advance cursor to highest new submissionId.
- *
- * Failures do not corrupt the stored cursor — cursor only advances after
- * successful DB write.
- */
 async function syncUser (handle) {
   if (runningHandles.has(handle)) {
     return { handle, skipped: true, reason: 'already running' };
@@ -69,7 +54,6 @@ async function syncUser (handle) {
   );
 
   try {
-    // --- 1. User info ---
     const userInfoArr = await getUserInfo([handle]);
     const userInfo = userInfoArr && userInfoArr[0];
     if (!userInfo) throw new Error(`No user info returned for handle: ${handle}`);
@@ -88,11 +72,8 @@ async function syncUser (handle) {
       { upsert: true }
     );
 
-    // --- 2. Cursor ---
     const state = await SyncState.findOne({ handle });
     const cursor = (state && state.lastSyncedSubmissionId) ? state.lastSyncedSubmissionId : 0;
-
-    // --- 3. Fetch new submissions ---
     const newSubs = await fetchAllSubmissionsSince(handle, cursor);
 
     if (newSubs.length === 0) {
@@ -103,7 +84,6 @@ async function syncUser (handle) {
       return { handle, newSubmissions: 0 };
     }
 
-    // --- 4. Bulk upsert (idempotent) ---
     const ops = newSubs.map(sub => ({
       updateOne: {
         filter:  { submissionId: sub.id },
@@ -114,7 +94,6 @@ async function syncUser (handle) {
 
     await Submission.bulkWrite(ops, { ordered: false });
 
-    // --- 4b. Upsert Problem records derived from new submissions ---
     const problems = extractProblems(newSubs);
     if (problems.length > 0) {
       const problemOps = problems.map(p => ({
@@ -127,7 +106,6 @@ async function syncUser (handle) {
       await Problem.bulkWrite(problemOps, { ordered: false });
     }
 
-    // --- 5. Advance cursor ---
     const highestId = newSubs.reduce((max, s) => Math.max(max, s.id), cursor);
 
     await SyncState.findOneAndUpdate(
@@ -145,11 +123,10 @@ async function syncUser (handle) {
     return { handle, newSubmissions: newSubs.length };
 
   } catch (err) {
-    // Capture error in SyncState but do NOT update the cursor
     await SyncState.findOneAndUpdate(
       { handle },
       { $set: { status: 'error', error: err.message } }
-    ).catch(() => {}); // best-effort
+    ).catch(() => {});
     throw err;
 
   } finally {
@@ -157,14 +134,11 @@ async function syncUser (handle) {
   }
 }
 
-/**
- * Sync all tracked handles sequentially.
- * A failure for one handle is caught and recorded; others continue.
- */
 async function syncAll () {
+  const { allHandles } = await getTrackerConfig();
   const results = [];
 
-  for (const handle of ALL_HANDLES) {
+  for (const handle of allHandles) {
     try {
       const result = await syncUser(handle);
       results.push({ ...result, success: true });
@@ -176,15 +150,15 @@ async function syncAll () {
   return results;
 }
 
-/**
- * Return sync status for all tracked handles.
- */
 async function getSyncStatus () {
-  const states = await SyncState.find({ handle: { $in: ALL_HANDLES } }).lean();
+  const { allHandles } = await getTrackerConfig();
+  if (allHandles.length === 0) return [];
+
+  const states = await SyncState.find({ handle: { $in: allHandles } }).lean();
   const stateMap = {};
   states.forEach(s => { stateMap[s.handle] = s; });
 
-  return ALL_HANDLES.map(handle => {
+  return allHandles.map(handle => {
     const s = stateMap[handle];
     return {
       handle,
