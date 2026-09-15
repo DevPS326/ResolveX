@@ -43,9 +43,9 @@ export default function App() {
   const [configError, setConfigError] = useState('');
 
   const loadConfig = useCallback(async () => {
-    setConfigError('');
     try {
       const data = await api.getConfig();
+      setConfigError('');
       setConfig(data);
     } catch (err) {
       setConfigError(err.message || 'Could not reach tracker backend.');
