@@ -5,9 +5,9 @@ const { getTrackerConfig, saveTrackerConfig, MAX_FRIENDS } = require('../service
 
 const router = express.Router();
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    res.json(await getTrackerConfig());
+    res.json(await getTrackerConfig(req.accountId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -25,7 +25,7 @@ router.put('/', async (req, res) => {
   }
 
   try {
-    const config = await saveTrackerConfig(meHandle, friends || []);
+    const config = await saveTrackerConfig(req.accountId, meHandle, friends || []);
     res.json(config);
   } catch (err) {
     res.status(400).json({ error: err.message });

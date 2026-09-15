@@ -51,10 +51,17 @@ export default function Setup({ config, onSaved, mode = 'login' }) {
       return;
     }
 
+    const pending = friendInput.trim();
+    const nextFriends = [...friends];
+    if (pending && !nextFriends.some(f => f.toLowerCase() === pending.toLowerCase())) nextFriends.push(pending);
+    if (nextFriends.some(f => f.toLowerCase() === handle.toLowerCase())) {
+      setError('Your own handle cannot be added as a friend.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
-      const saved = await api.saveConfig({ meHandle: handle, friends });
+      const saved = await api.saveConfig({ meHandle: handle, friends: nextFriends });
       onSaved?.(saved);
       api.sync().catch(() => {});
       navigate('/');
@@ -68,29 +75,32 @@ export default function Setup({ config, onSaved, mode = 'login' }) {
   return (
     <div className="setup-page">
       <div className="setup-shell">
-        <div className="setup-kicker">CP COMBAT COMMAND</div>
-        <h1>{mode === 'settings' ? 'EDIT TRACKER' : 'IDENTIFY YOUR SQUAD'}</h1>
+        <div className="setup-kicker">Your workspace</div>
+        <h1>{mode === 'settings' ? 'Settings' : 'Welcome to ResolveX'}</h1>
         <p className="setup-subtitle">
           {mode === 'settings'
-            ? 'Update your Codeforces handle or tracked friends. Changes apply to the command center immediately.'
-            : 'Use your Codeforces handle as your tracker identity, then add the friends you want to monitor.'}
+            ? 'Manage your Codeforces profile and the friends you learn alongside.'
+            : 'Connect your Codeforces handle to follow your progress and learn from your friends.'}
         </p>
 
         <form onSubmit={save} className="setup-card">
-          <label className="setup-label" htmlFor="meHandle">YOUR CODEFORCES HANDLE</label>
+          <label className="setup-label" htmlFor="meHandle">Codeforces handle</label>
           <input
             id="meHandle"
             className="setup-input"
             value={meHandle}
             onChange={e => setMeHandle(e.target.value)}
             placeholder="e.g. tourist"
+            disabled={saving}
+            spellCheck={false}
+            autoCapitalize="none"
             autoComplete="off"
             autoFocus={mode !== 'settings'}
           />
 
           <div className="setup-divider" />
 
-          <label className="setup-label" htmlFor="friendHandle">TRACKED FRIENDS</label>
+          <label className="setup-label" htmlFor="friendHandle">Friends you follow</label>
           <div className="friend-entry-row">
             <input
               id="friendHandle"
@@ -99,9 +109,12 @@ export default function Setup({ config, onSaved, mode = 'login' }) {
               onChange={e => setFriendInput(e.target.value)}
               onKeyDown={onFriendKeyDown}
               placeholder="Type a handle and press Enter"
-              autoComplete="off"
+              disabled={saving}
+            spellCheck={false}
+            autoCapitalize="none"
+            autoComplete="off"
             />
-            <button type="button" className="btn btn-ghost setup-add" onClick={addFriend}>ADD</button>
+            <button type="button" className="btn btn-ghost setup-add" onClick={addFriend} disabled={saving || !friendInput.trim()}>Add friend</button>
           </div>
 
           <div className="friend-chip-list">
@@ -111,19 +124,19 @@ export default function Setup({ config, onSaved, mode = 'login' }) {
             {friends.map(handle => (
               <div className="friend-chip" key={handle}>
                 <span>{handle}</span>
-                <button type="button" onClick={() => removeFriend(handle)} aria-label={`Remove ${handle}`}>×</button>
+                <button type="button" disabled={saving} onClick={() => removeFriend(handle)} aria-label={`Remove ${handle}`}>×</button>
               </div>
             ))}
           </div>
 
-          {error && <div className="setup-error">{error}</div>}
+          {error && <div className="setup-error" role="alert">{error}</div>}
 
           <div className="setup-actions">
             {mode === 'settings' && (
-              <button type="button" className="btn btn-subtle" onClick={() => navigate('/')}>CANCEL</button>
+              <button type="button" className="btn btn-subtle" onClick={() => navigate('/')}>Cancel</button>
             )}
             <button type="submit" className="btn btn-primary setup-submit" disabled={saving}>
-              {saving ? 'VALIDATING…' : mode === 'settings' ? 'SAVE & SYNC' : 'ENTER COMMAND CENTER'}
+              {saving ? 'Saving…' : mode === 'settings' ? 'Save changes' : 'Open workspace'}
             </button>
           </div>
         </form>

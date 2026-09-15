@@ -66,29 +66,29 @@ function IntelStrip({ rivals, journeys, skillGaps, syncStatus, lastFetch, nowSec
   return (
     <div className="intel-strip">
       <div className="metric-tile">
-        <div className="metric-label">Tracked Peers</div>
-        <div className="metric-value accent">{rivals.length || '—'}</div>
+        <div className="metric-label">Friends followed</div>
+        <div className="metric-value accent">{rivals.length}</div>
         <div className="metric-sub">{activePeers} active this week</div>
       </div>
       <div className="metric-tile">
-        <div className="metric-label">Peer Solves</div>
-        <div className="metric-value">{recentSolves || '—'}</div>
+        <div className="metric-label">Friends’ solves</div>
+        <div className="metric-value">{recentSolves}</div>
         <div className="metric-sub">last 24h</div>
       </div>
       <div className="metric-tile">
-        <div className="metric-label">Multi-Attempt</div>
-        <div className="metric-value">{multiJourneys || '—'}</div>
-        <div className="metric-sub">3+ attempt journeys</div>
+        <div className="metric-label">Repeat attempts</div>
+        <div className="metric-value">{multiJourneys}</div>
+        <div className="metric-sub">Problems with 3+ attempts</div>
       </div>
       <div className="metric-tile">
-        <div className="metric-label">Top Gap</div>
+        <div className="metric-label">Focus area</div>
         <div className={`metric-value ${topGap?.gapLevel === 'HIGH' ? 'danger' : topGap?.gapLevel === 'MEDIUM' ? 'warn' : ''}`}>
           {topGap ? topGap.tag : '—'}
         </div>
         <div className="metric-sub">{topGap ? `${topGap.gapLevel} gap` : 'no gaps detected'}</div>
       </div>
       <div className="metric-tile">
-        <div className="metric-label">Last Update</div>
+        <div className="metric-label">Last checked</div>
         <div className="metric-value" style={{ fontSize: '0.85rem' }}>{updatedAgo}</div>
         <div className="metric-sub">
           {syncStatus?.handles?.filter(h => h.status === 'done').length || 0}
@@ -107,7 +107,7 @@ function AttentionCard({ item }) {
     return (
       <div className={`attention-card type-journey`}>
         <div className={`ac-type journey`}>
-          {variant === 'struggling' ? '⚠ UNRESOLVED PROGRESSION' : '⚡ INTERESTING JOURNEY'}
+          {variant === 'struggling' ? 'Still in progress' : 'Persistence paid off'}
         </div>
         <div className="ac-title">
           <Link to={`/friend/${j.handle}`}>{j.handle}</Link>
@@ -132,7 +132,7 @@ function AttentionCard({ item }) {
         <div className="ac-footer">
           <span />
           <Link to={`/problem/${j.contestId}/${j.problemIndex}`} className="btn-link btn-sm">
-            INSPECT ↗
+            View problem →
           </Link>
         </div>
       </div>
@@ -143,7 +143,7 @@ function AttentionCard({ item }) {
     const { gap: g } = item;
     return (
       <div className="attention-card type-gap">
-        <div className="ac-type gap">SKILL GAP</div>
+        <div className="ac-type gap">Practice opportunity</div>
         <div className="ac-title">{g.tag}</div>
         <div className="ac-sub">
           Peer exposure significantly higher than yours
@@ -153,9 +153,9 @@ function AttentionCard({ item }) {
         </div>
         <div className="ac-footer">
           <span />
-          <span className="btn-link btn-sm" style={{ color: 'var(--purple)', borderColor: 'rgba(188,19,254,0.2)', background: 'rgba(188,19,254,0.07)' }}>
-            TRAIN
-          </span>
+          <a href={`https://codeforces.com/problemset?tags=${encodeURIComponent(g.tag)}`} target="_blank" rel="noreferrer" className="btn-link btn-sm" style={{ color: 'var(--purple)', borderColor: 'rgba(188,19,254,0.2)', background: 'rgba(188,19,254,0.07)' }}>
+            Practice topic ↗
+          </a>
         </div>
       </div>
     );
@@ -165,7 +165,7 @@ function AttentionCard({ item }) {
     const { target: t } = item;
     return (
       <div className="attention-card type-target">
-        <div className="ac-type target">LEARNING TARGET</div>
+        <div className="ac-type target">Suggested practice</div>
         <div className="ac-title">{t.relatedTag || 'Practice'}</div>
         <div className="ac-sub">{t.action}</div>
         <div className="ac-meta">{t.reason}</div>
@@ -234,6 +234,9 @@ function ProblemRow({ p }) {
 const POLL_INTERVAL = 30_000;
 
 export default function Dashboard() {
+  const [error, setError] = useState('');
+  const [analyticsError, setAnalyticsError] = useState('');
+  const [initialLoading, setInitialLoading] = useState(true);
   const [rivals,          setRivals]          = useState([]);
   const [activity,        setActivity]        = useState([]);
   const [skillGaps,       setSkillGaps]       = useState([]);
@@ -257,8 +260,11 @@ export default function Dashboard() {
       setActivity(activityRes.activity || []);
       setSyncStatus(statusRes);
       setLastFetch(Date.now());
+      setError('');
     } catch (e) {
-      console.error('[dashboard] core fetch error:', e);
+      setError(e.message || 'Could not load your workspace. Please try refreshing.');
+    } finally {
+      setInitialLoading(false);
     }
   }, []);
 
@@ -270,8 +276,9 @@ export default function Dashboard() {
       ]);
       setSkillGaps(gapsRes.skillGaps || []);
       setLearningTargets(targetsRes.targets || []);
+      setAnalyticsError('');
     } catch (e) {
-      console.error('[dashboard] analytics error:', e);
+      setAnalyticsError(e.message || 'Practice insights are temporarily unavailable.');
     }
   }, []);
 
@@ -301,8 +308,8 @@ export default function Dashboard() {
       // Brief poll to pick up status change
       await new Promise(r => setTimeout(r, 1500));
       await fetchCore();
-    } catch {
-      // silent
+    } catch (e) {
+      setError(e.message || 'Sync could not start. Please try again.');
     } finally {
       setSyncing(false);
     }
@@ -313,7 +320,7 @@ export default function Dashboard() {
     try {
       setLegacyData(await api.compareAll());
     } catch {
-      alert('Live CF connection unavailable. Backend may be offline or rate-limited.');
+      setError('Problem comparison is temporarily unavailable. Please try again shortly.');
     } finally {
       setLegacyLoading(false);
     }
@@ -335,6 +342,16 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
+      <div className="page-heading">
+        <div className="page-eyebrow">Your Codeforces workspace</div>
+        <h1>Overview</h1>
+        <p>Follow your progress, learn from friends, and find your next challenge.</p>
+      </div>
+      {error && <div className="dashboard-error" role="alert">{error}</div>}
+      {analyticsError && <div className="dashboard-error" role="status">Practice insights could not load. <button className="btn btn-subtle" onClick={fetchAnalytics}>Try again</button></div>}
+      {initialLoading && <div className="page-loading" role="status"><div className="loading-bar" />Loading your activity…</div>}
+      {!initialLoading && <>
+
 
       {/* Sync bar */}
       <div className="sync-bar">
@@ -342,7 +359,7 @@ export default function Dashboard() {
           <div className="db-status">
             <span className={`status-dot ${isSyncing ? 'syncing' : ''}`} />
             {isSyncing
-              ? <span className="sync-running">SYNCING IN PROGRESS</span>
+              ? <span className="sync-running">Syncing your workspace…</span>
               : <span className="sync-summary">
                   {syncStatus?.handles?.filter(h => h.status === 'done').length || 0}
                   / {syncStatus?.handles?.length || 0} handles synced
@@ -351,14 +368,14 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="sync-bar-right">
-          <button className="btn btn-ghost btn-sm" onClick={triggerSync} disabled={isSyncing}>
-            {syncing ? 'STARTING…' : 'SYNC ALL'}
+          <button className="btn btn-primary btn-sm" onClick={triggerSync} disabled={isSyncing}>
+            {syncing ? 'Starting…' : 'Sync all'}
           </button>
           <button className="btn btn-subtle btn-sm" onClick={fetchCore}>
-            REFRESH
+            Refresh
           </button>
           <button className="btn btn-subtle btn-sm" onClick={loadLegacy} disabled={legacyLoading}>
-            {legacyLoading ? 'LOADING…' : 'LIVE COMPARE'}
+            {legacyLoading ? 'Loading…' : 'Compare problems'}
           </button>
         </div>
       </div>
@@ -388,8 +405,8 @@ export default function Dashboard() {
       {attentionItems.length > 0 && (
         <section className="attention-section">
           <div className="section-row-header">
-            <h2>Attention Required</h2>
-            <span className="section-badge">{attentionItems.length} items</span>
+            <h2>Worth a closer look</h2>
+            <span className="section-badge">{attentionItems.length} {attentionItems.length === 1 ? 'item' : 'items'}</span>
           </div>
           <div className="attention-grid">
             {attentionItems.map((item, i) => (
@@ -401,16 +418,16 @@ export default function Dashboard() {
 
       {/* Main Two-Column */}
       <div className="dashboard-main">
-        {/* Left: Peer Pulse */}
+        {/* Left: Your friends */}
         <div className="peer-section-wrap">
           <div className="section-row-header">
-            <h2>Peer Pulse</h2>
+            <h2>Your friends</h2>
             <span className="section-badge">{rivals.length} tracked</span>
           </div>
           <div className="peer-cards">
             {rivals.length === 0 ? (
               <div className="empty-state" style={{ padding: '24px 0' }}>
-                No peers loaded — run SYNC ALL first.
+                No friends to show yet. Add friends in Settings, then sync to see their progress.
               </div>
             ) : (
               peersToShow.map(r => (
@@ -420,7 +437,7 @@ export default function Dashboard() {
           </div>
           {rivals.length > 10 && (
             <button className="show-all-peers-btn" onClick={() => setShowAllPeers(v => !v)}>
-              {showAllPeers ? `SHOW TOP 10` : `SHOW ALL ${rivals.length}`}
+              {showAllPeers ? `Show fewer` : `Show all ${rivals.length}`}
             </button>
           )}
         </div>
@@ -428,7 +445,7 @@ export default function Dashboard() {
         {/* Right: Grouped Activity Feed */}
         <div className="feed-section-wrap">
           <div className="feed-header-row">
-            <h2>Recent Activity</h2>
+            <h2>Recent activity</h2>
             {lastFetch && (
               <span className="feed-updated">updated {relTime(Math.floor(lastFetch / 1000))}</span>
             )}
@@ -441,7 +458,7 @@ export default function Dashboard() {
       {(skillGaps.length > 0 || learningTargets.length > 0) && (
         <section className="training-section">
           <div className="section-row-header" style={{ marginBottom: 14 }}>
-            <h2>Skills &amp; Training</h2>
+            <h2>Skills &amp; practice</h2>
           </div>
           <div className="training-grid">
             <SkillGapPanel skillGaps={skillGaps} />
@@ -453,22 +470,22 @@ export default function Dashboard() {
       {/* Legacy section */}
       <details className="legacy-section">
         <summary>
-          ▸ TACTICAL TARGET GRID (Live CF Data)
+          Find practice problems
         </summary>
         <div className="legacy-inner">
           {!legacyData ? (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <button className="btn btn-ghost" onClick={loadLegacy} disabled={legacyLoading}>
-                {legacyLoading ? 'GATHERING INTEL…' : 'LOAD LIVE CF DATA'}
+                {legacyLoading ? 'Finding problems…' : 'Find problems'}
               </button>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.62rem', marginTop: 10 }}>
-                Makes live Codeforces API calls. Not required for DB-served intelligence.
+                Find problems your friends have solved that you haven’t tried yet.
               </p>
             </div>
           ) : (
             <>
               <div className="legacy-header">
-                <span className="legacy-header-title">TACTICAL TARGET GRID</span>
+                <span className="legacy-header-title">Practice problems</span>
                 <div className="legacy-stats">
                   <span>My Rating: <strong>{legacyData.me?.rating || '—'}</strong></span>
                   <span>My Solves: <strong>{legacyData.me?.solvedCount || '—'}</strong></span>
@@ -500,6 +517,7 @@ export default function Dashboard() {
           )}
         </div>
       </details>
+      </>}
 
     </div>
   );

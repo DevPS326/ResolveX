@@ -64,7 +64,7 @@ export default function GroupedFeed({ activity, maxItems = 18, showHandle = true
                 <span className="jc-meta-hi">{j.attemptCount} attempt{j.attemptCount !== 1 ? 's' : ''}</span>
                 {dur && <span className="jc-meta-hi">{dur}</span>}
                 {!j.solved && <span style={{ color: 'var(--text-muted)' }}>unsolved</span>}
-                {isInteresting && <span style={{ color: 'var(--green)', fontSize: '0.56rem' }}>★ interesting journey</span>}
+                {isInteresting && <span style={{ color: 'var(--green)', fontSize: '0.75rem' }}>Solved after multiple attempts</span>}
               </div>
             </div>
 
@@ -74,7 +74,7 @@ export default function GroupedFeed({ activity, maxItems = 18, showHandle = true
                 to={`/problem/${j.contestId}/${j.problemIndex}`}
                 className="btn-link btn-sm"
               >
-                {j.attemptCount > 1 ? 'VIEW JOURNEY' : 'INSPECT'}
+                {j.attemptCount > 1 ? 'View attempts' : 'View details'}
               </Link>
             </div>
           </div>

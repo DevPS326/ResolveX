@@ -6,7 +6,7 @@ const { syncAll, getSyncStatus } = require('../services/syncService');
 const router = express.Router();
 
 // In-process guard — prevents multiple concurrent full-sync runs
-let syncJobRunning = false;
+const runningAccounts = new Set();
 
 /**
  * POST /api/sync
@@ -14,28 +14,28 @@ let syncJobRunning = false;
  * Returns immediately; does not wait for sync to complete.
  */
 router.post('/', (req, res) => {
-  if (syncJobRunning) {
+  if (runningAccounts.has(req.accountId)) {
     return res.json({
       status:  'already_running',
       message: 'A sync job is already in progress.'
     });
   }
 
-  syncJobRunning = true;
+  runningAccounts.add(req.accountId);
   res.json({
     status:  'started',
     message: 'Sync started in background. Poll /api/sync/status for progress.'
   });
 
   // Fire-and-forget: runs asynchronously, does NOT block the response
-  syncAll()
+  syncAll(req.accountId)
     .then(results => {
       const succeeded = results.filter(r => r.success).length;
       const failed    = results.filter(r => !r.success).length;
       console.log(`[sync] Completed: ${succeeded} succeeded, ${failed} failed`);
     })
     .catch(err => console.error('[sync] Fatal error during syncAll:', err))
-    .finally(() => { syncJobRunning = false; });
+    .finally(() => { runningAccounts.delete(req.accountId); });
 });
 
 /**
@@ -44,9 +44,9 @@ router.post('/', (req, res) => {
  */
 router.get('/status', async (req, res) => {
   try {
-    const handles = await getSyncStatus();
+    const handles = await getSyncStatus(req.accountId);
     res.json({
-      jobRunning: syncJobRunning,
+      jobRunning: runningAccounts.has(req.accountId),
       handles
     });
   } catch (err) {

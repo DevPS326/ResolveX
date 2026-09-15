@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import GroupedFeed from '../components/GroupedFeed';
 
-const BAR_COLORS = ['#00f2ff','#bc13fe','#4ade80','#fb923c','#f87171','#fbbf24','#a78bfa','#38bdf8'];
+const BAR_COLORS = ['#8bbdb4','#b2a6cf','#91c4a2','#deb18a','#e9a09e','#d8c18c','#9eafd0','#90b7ca'];
 
 function MiniBarChart({ data, maxItems = 8 }) {
   if (!data || Object.keys(data).length === 0) {
@@ -62,7 +62,7 @@ export default function FriendProfile() {
 
   if (loading) return (
     <div className="page-loading">
-      LOADING PROFILE — {handle}
+      Loading profile — {handle}
       <div className="loading-bar" />
     </div>
   );
@@ -76,8 +76,8 @@ export default function FriendProfile() {
       {/* Header */}
       <div className="fp-header">
         <div className="fp-breadcrumb">
-          <Link to="/">← Command Center</Link>
-          {' / '}Peer Profile
+          <Link to="/">← Overview</Link>
+          {' / '}Friend profile
         </div>
         <div className="fp-title-row">
           <h1 className="fp-handle">{handle}</h1>
@@ -86,13 +86,13 @@ export default function FriendProfile() {
             target="_blank" rel="noreferrer"
             className="btn btn-subtle btn-sm"
           >
-            CF PROFILE ↗
+            Codeforces profile ↗
           </a>
         </div>
         {fp.totalSubmissions != null && (
           <div className="fp-stats-row">
             <div className="fp-stat">
-              <label>Total Subs</label>
+              <label>Submissions</label>
               <span>{fp.totalSubmissions}</span>
             </div>
             <div className="fp-stat">
@@ -100,7 +100,7 @@ export default function FriendProfile() {
               <span>{fp.totalSolved || 0}</span>
             </div>
             <div className="fp-stat">
-              <label>Avg Attempts / AC</label>
+              <label>Attempts per solve</label>
               <span>{fp.avgAttemptsToAC != null ? fp.avgAttemptsToAC.toFixed(1) : '—'}</span>
             </div>
             <div className="fp-stat">
@@ -115,7 +115,7 @@ export default function FriendProfile() {
         )}
         {!fp.totalSubmissions && (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginTop: 8 }}>
-            No fingerprint data — sync this handle first.
+            Sync this friend to see their progress.
           </div>
         )}
       </div>
@@ -145,7 +145,7 @@ export default function FriendProfile() {
       {/* Activity feed */}
       <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border-1)', borderRadius: 6, padding: '16px 20px' }}>
         <div className="section-row-header" style={{ marginBottom: 14 }}>
-          <h2 style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '3px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+          <h2 >
             Recent Activity
           </h2>
           <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>{activity.length} submissions</span>

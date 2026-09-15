@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const TrackerConfigSchema = new mongoose.Schema({
   key: {
     type: String,
-    default: 'primary',
+    required: true,
     unique: true,
     index: true
   },

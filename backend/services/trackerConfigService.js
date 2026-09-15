@@ -3,7 +3,11 @@
 const TrackerConfig = require('../models/TrackerConfig');
 const { getUserInfo } = require('./codeforcesService');
 
-const CONFIG_KEY = 'primary';
+// Never fall back to the former shared configuration, including for new accounts.
+function configKey(accountId) {
+  if (typeof accountId !== 'string' || !/^[a-f0-9]{24}$/i.test(accountId)) throw new Error('An authenticated account is required.');
+  return `account:${accountId}`;
+}
 const MAX_FRIENDS = 50;
 
 function cleanHandle(value) {
@@ -26,8 +30,8 @@ function uniqueHandles(handles, meHandle) {
   return out;
 }
 
-async function getTrackerConfig() {
-  const doc = await TrackerConfig.findOne({ key: CONFIG_KEY }).lean();
+async function getTrackerConfig(accountId) {
+  const doc = await TrackerConfig.findOne({ key: configKey(accountId) }).lean();
 
   if (!doc) {
     return {
@@ -48,7 +52,8 @@ async function getTrackerConfig() {
   };
 }
 
-async function saveTrackerConfig(meHandle, friends = []) {
+async function saveTrackerConfig(accountId, meHandle, friends = []) {
+  configKey(accountId);
   const me = cleanHandle(meHandle);
   if (!me) throw new Error('Your Codeforces handle is required.');
 
@@ -81,7 +86,7 @@ async function saveTrackerConfig(meHandle, friends = []) {
   });
 
   await TrackerConfig.findOneAndUpdate(
-    { key: CONFIG_KEY },
+    { key: configKey(accountId) },
     {
       $set: {
         meHandle: canonicalMe,
@@ -92,7 +97,7 @@ async function saveTrackerConfig(meHandle, friends = []) {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  return getTrackerConfig();
+  return getTrackerConfig(accountId);
 }
 
 module.exports = {

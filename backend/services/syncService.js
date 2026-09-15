@@ -134,8 +134,8 @@ async function syncUser (handle) {
   }
 }
 
-async function syncAll () {
-  const { allHandles } = await getTrackerConfig();
+async function syncAll (accountId) {
+  const { allHandles } = await getTrackerConfig(accountId);
   const results = [];
 
   for (const handle of allHandles) {
@@ -150,8 +150,8 @@ async function syncAll () {
   return results;
 }
 
-async function getSyncStatus () {
-  const { allHandles } = await getTrackerConfig();
+async function getSyncStatus (accountId) {
+  const { allHandles } = await getTrackerConfig(accountId);
   if (allHandles.length === 0) return [];
 
   const states = await SyncState.find({ handle: { $in: allHandles } }).lean();

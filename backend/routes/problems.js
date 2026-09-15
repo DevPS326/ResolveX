@@ -19,7 +19,7 @@ router.get('/:contestId/:index/friends', async (req, res) => {
   }
 
   try {
-    const { allHandles } = await getTrackerConfig();
+    const { allHandles } = await getTrackerConfig(req.accountId);
     if (allHandles.length === 0) {
       return res.json({ contestId, problemIndex, problem: null, friends: [] });
     }

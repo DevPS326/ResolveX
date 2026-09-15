@@ -32,13 +32,15 @@ function HorizTimeline({ submissions, onSelect, selectedId }) {
           <div key={sub.submissionId} className="ht-step">
             {i > 0 && <div className="ht-connector" />}
             <div className="ht-node">
-              <div
+              <button
+                type="button"
+                aria-pressed={selectedId === sub.submissionId}
                 className={`ht-dot ${vc} ${selectedId === sub.submissionId ? 'selected' : ''}`}
                 onClick={() => onSelect?.(sub)}
                 title={`${sub.verdict} · ${fmtTime(sub.creationTimeSeconds)}`}
               >
                 {vc}
-              </div>
+              </button>
               <div className="ht-time">{fmtTime(sub.creationTimeSeconds)}</div>
             </div>
           </div>
@@ -103,7 +105,7 @@ export default function ProblemIntelligence() {
 
   if (loading) return (
     <div className="page-loading">
-      LOADING PROBLEM INTELLIGENCE
+      Loading problem details…
       <div className="loading-bar" />
     </div>
   );
@@ -123,7 +125,7 @@ export default function ProblemIntelligence() {
       {/* Header */}
       <div className="pi-header">
         <div className="pi-breadcrumb">
-          <Link to="/">← Command Center</Link>
+          <Link to="/">← Overview</Link>
           {' / '}Problem Intelligence
         </div>
         <div className="pi-title-row">
@@ -132,8 +134,8 @@ export default function ProblemIntelligence() {
             <h1 className="pi-title">{problem?.name || 'Unknown Problem'}</h1>
           </div>
           <div className="pi-actions">
-            <a href={cfProblemUrl}  target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">PROBLEM ↗</a>
-            <a href={cfContestUrl}  target="_blank" rel="noreferrer" className="btn btn-subtle btn-sm">CONTEST ↗</a>
+            <a href={cfProblemUrl}  target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open problem ↗</a>
+            <a href={cfContestUrl}  target="_blank" rel="noreferrer" className="btn btn-subtle btn-sm">View contest ↗</a>
           </div>
         </div>
         <div className="pi-meta">
@@ -149,7 +151,7 @@ export default function ProblemIntelligence() {
             <>
               <div className="editorial-avail">
                 <span style={{ color: 'var(--green)' }}>●</span>
-                EDITORIAL AVAILABLE
+                Editorial
                 {editorial.availableAt && (
                   <span className="editorial-time"> · Available: {new Date(editorial.availableAt).toLocaleString()}</span>
                 )}
@@ -157,13 +159,13 @@ export default function ProblemIntelligence() {
               <div style={{ display: 'flex', gap: 8 }}>
                 {editorial.title && <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{editorial.title}</span>}
                 {editorial.editorialUrl && (
-                  <a href={editorial.editorialUrl} target="_blank" rel="noreferrer" className="btn-link btn-sm">VIEW EDITORIAL ↗</a>
+                  <a href={editorial.editorialUrl} target="_blank" rel="noreferrer" className="btn-link btn-sm">Read editorial ↗</a>
                 )}
               </div>
             </>
           ) : (
             <span className="editorial-none">
-              EDITORIAL NOT REGISTERED — Register via <code style={{ color: 'var(--cyan)', fontSize: '0.6rem' }}>POST /api/editorials/{contestId}</code>
+              No editorial is available for this contest yet.
             </span>
           )}
         </div>
@@ -175,7 +177,7 @@ export default function ProblemIntelligence() {
         {/* Friends sidebar */}
         <div className="pi-friends-sidebar">
           <div className="pi-sidebar-header">
-            PEER JOURNEYS ({friends.length})
+            Friends’ attempts ({friends.length})
           </div>
 
           {friends.length === 0 ? (
@@ -185,6 +187,9 @@ export default function ProblemIntelligence() {
               <div
                 key={f.handle}
                 className={`friend-entry ${selectedFriend?.handle === f.handle ? 'selected' : ''}`}
+                tabIndex={0}
+                aria-label={`Show attempts by ${f.handle}`}
+                onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectFriend(f); } }}
                 onClick={() => selectFriend(f)}
               >
                 <div className="fe-top">
@@ -196,7 +201,7 @@ export default function ProblemIntelligence() {
                     {f.handle}
                   </Link>
                   <span className={f.solved ? 'fe-solved' : 'fe-unsolved'}>
-                    {f.solved ? 'SOLVED' : 'UNSOLVED'}
+                    {f.solved ? 'Solved' : 'Unsolved'}
                   </span>
                 </div>
                 <div className="fe-verdicts">
@@ -226,7 +231,7 @@ export default function ProblemIntelligence() {
             <div className="pi-panel">
               <div className="pi-panel-header">
                 <span>
-                  JOURNEY ·{' '}
+                  Attempts ·{' '}
                   <Link to={`/friend/${selectedFriend.handle}`} style={{ color: 'var(--cyan)' }}>
                     {selectedFriend.handle}
                   </Link>
@@ -243,7 +248,7 @@ export default function ProblemIntelligence() {
                     target="_blank" rel="noreferrer"
                     className="btn-link btn-sm"
                   >
-                    ALL SUBMISSIONS ↗
+                    All submissions ↗
                   </a>
                 </span>
               </div>
@@ -260,6 +265,9 @@ export default function ProblemIntelligence() {
                     <div
                       key={sub.submissionId}
                       className={`sub-entry ${selectedSub?.submissionId === sub.submissionId ? 'selected' : ''}`}
+                      tabIndex={0}
+                      aria-label={`View submission ${i + 1}`}
+                      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedSub(sub); } }}
                       onClick={() => setSelectedSub(sub)}
                     >
                       <span className="se-num">#{i + 1}</span>
@@ -283,7 +291,7 @@ export default function ProblemIntelligence() {
             {/* Evidence signal */}
             {ev !== undefined && ev !== null && (
               <div className="pi-panel">
-                <div className="pi-panel-header">INDEPENDENT ATTEMPT SIGNAL</div>
+                <div className="pi-panel-header">Attempt analysis</div>
                 <EvidenceSignal signal={ev} />
               </div>
             )}
@@ -292,7 +300,7 @@ export default function ProblemIntelligence() {
             {selectedSub && (
               <div className="pi-panel">
                 <div className="pi-panel-header">
-                  SOURCE — Attempt #{(selectedFriend.submissions || []).findIndex(s => s.submissionId === selectedSub.submissionId) + 1}
+                  Source · Attempt #{(selectedFriend.submissions || []).findIndex(s => s.submissionId === selectedSub.submissionId) + 1}
                 </div>
                 <SourceViewer submission={selectedSub} />
               </div>
@@ -301,7 +309,7 @@ export default function ProblemIntelligence() {
             {/* Code evolution diff pairs */}
             {selectedFriend.submissions && selectedFriend.submissions.length >= 2 && (
               <div className="pi-panel">
-                <div className="pi-panel-header">CODE EVOLUTION</div>
+                <div className="pi-panel-header">Code changes</div>
                 <div className="pi-panel-body">
                   <div className="diff-pairs">
                     {selectedFriend.submissions.slice(0, -1).map((sub, i) => {

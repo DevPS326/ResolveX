@@ -47,9 +47,9 @@ const analyzeUser = async (handle) => {
   }
 };
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { configured, meHandle, friends } = await getTrackerConfig();
+    const { configured, meHandle, friends } = await getTrackerConfig(req.accountId);
     if (!configured) {
       return res.status(400).json({ error: 'Tracker setup is required first.' });
     }

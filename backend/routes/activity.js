@@ -10,7 +10,7 @@ const MAX_LIMIT     = 200;
 
 router.get('/', async (req, res) => {
   try {
-    const { allHandles } = await getTrackerConfig();
+    const { allHandles } = await getTrackerConfig(req.accountId);
     if (allHandles.length === 0) return res.json({ count: 0, activity: [] });
 
     const limitParam = parseInt(req.query.limit, 10);

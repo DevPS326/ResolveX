@@ -7,9 +7,9 @@ const { getTrackerConfig } = require('../services/trackerConfigService');
 
 const router = express.Router();
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { friends } = await getTrackerConfig();
+    const { friends } = await getTrackerConfig(req.accountId);
     if (friends.length === 0) return res.json({ rivals: [] });
 
     const users = await User.find({ handle: { $in: friends } }).lean();

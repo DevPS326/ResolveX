@@ -1,13 +1,3 @@
-// Local dev uses Vite proxy. Production falls back to the deployed Render API
-// so the app still works even if VITE_API_URL was not injected into a build.
-const PROD_API_FALLBACK = 'https://resolvex-api-gw5y.onrender.com';
-const API_BASE = (
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? PROD_API_FALLBACK : '')
-).replace(/\/$/, '');
-
-const url = (path) => `${API_BASE}${path}`;
-
 async function parseJsonResponse(response) {
   if (!response.ok) {
     const text = await response.text().catch(() => '');
@@ -18,23 +8,37 @@ async function parseJsonResponse(response) {
     } catch {
       // keep raw text
     }
-    throw new Error(message || `API ${response.status}`);
+    const error = new Error(message || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return response.json();
 }
 
+// Same-origin proxies keep the account cookie first-party on Vercel and in development.
+async function request(path, method = 'GET', body) {
+  try {
+    const response = await fetch(path, {
+      method,
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'X-ResolveX-Client': 'web' },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {})
+    });
+    return await parseJsonResponse(response);
+  } catch (error) {
+    if (error.status === 401 && !path.startsWith('/api/auth/')) window.dispatchEvent(new Event('resolvex:session-expired'));
+    throw error;
+  }
+}
 export const api = {
-  get: (path) => fetch(url(path)).then(parseJsonResponse),
-  post: (path, body = {}) => fetch(url(path), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }).then(parseJsonResponse),
-  put: (path, body = {}) => fetch(url(path), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }).then(parseJsonResponse),
+  get: path => request(path),
+  post: (path, body = {}) => request(path, 'POST', body),
+  put: (path, body = {}) => request(path, 'PUT', body),
+  currentAccount: () => request('/api/auth/me'),
+  signIn: credentials => request('/api/auth/login', 'POST', credentials),
+  register: credentials => request('/api/auth/register', 'POST', credentials),
+  signOut: () => request('/api/auth/logout', 'POST', {}),
 
   getConfig:    () => api.get('/api/config'),
   saveConfig:   (config) => api.put('/api/config', config),

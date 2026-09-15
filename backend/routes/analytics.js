@@ -10,9 +10,9 @@ const { computeIndependenceSignal }                 = require('../services/evide
 
 const router = express.Router();
 
-router.get('/skills', async (_req, res) => {
+router.get('/skills', async (req, res) => {
   try {
-    const { configured, meHandle, friends } = await getTrackerConfig();
+    const { configured, meHandle, friends } = await getTrackerConfig(req.accountId);
     if (!configured) return res.json({ myHandle: null, skillGaps: [], generatedAt: new Date() });
 
     const skillGaps = await computeSkillGaps(meHandle, friends);
@@ -22,9 +22,9 @@ router.get('/skills', async (_req, res) => {
   }
 });
 
-router.get('/learning', async (_req, res) => {
+router.get('/learning', async (req, res) => {
   try {
-    const { configured, meHandle, friends } = await getTrackerConfig();
+    const { configured, meHandle, friends } = await getTrackerConfig(req.accountId);
     if (!configured) return res.json({ targets: [], generatedAt: new Date() });
 
     const targets = await generateLearningTargets(meHandle, friends);

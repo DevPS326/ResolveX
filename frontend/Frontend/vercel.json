@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/api/:path*", "destination": "https://resolvex-api-gw5y.onrender.com/api/:path*" },
+    { "source": "/compare-all", "destination": "https://resolvex-api-gw5y.onrender.com/compare-all" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

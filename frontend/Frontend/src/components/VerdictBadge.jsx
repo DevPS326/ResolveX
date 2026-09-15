@@ -13,15 +13,15 @@ const VERDICT_STYLES = {
 export default function VerdictBadge({ verdict }) {
   const s = VERDICT_STYLES[verdict] || VERDICT_STYLES.UNKNOWN;
   return (
-    <span style={{
+    <span title={verdict?.toLowerCase().replaceAll('_', ' ')} style={{
       background: s.color + '22',
       color: s.color,
       border: `1px solid ${s.color}66`,
-      borderRadius: 3,
+      borderRadius: 5,
       padding: '2px 7px',
       fontSize: 11,
       fontWeight: 700,
-      letterSpacing: 1,
+      letterSpacing: 0,
       fontFamily: 'monospace'
     }}>
       {s.label}
