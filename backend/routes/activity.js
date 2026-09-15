@@ -1,30 +1,25 @@
 'use strict';
 
-/**
- * GET /api/activity[?limit=N]
- * Returns the most recent submissions across all tracked users (including ME).
- * Served from local DB. Default limit 50, max 200.
- */
-
 const express    = require('express');
 const Submission = require('../models/Submission');
-const { ALL_HANDLES } = require('../config/handles');
+const { getTrackerConfig } = require('../services/trackerConfigService');
 
 const router = express.Router();
-
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT     = 200;
 
 router.get('/', async (req, res) => {
   try {
+    const { allHandles } = await getTrackerConfig();
+    if (allHandles.length === 0) return res.json({ count: 0, activity: [] });
+
     const limitParam = parseInt(req.query.limit, 10);
     const limit = (!isNaN(limitParam) && limitParam > 0)
       ? Math.min(limitParam, MAX_LIMIT)
       : DEFAULT_LIMIT;
 
-    // Uses { creationTimeSeconds: -1 } index added in Phase 2
     const subs = await Submission
-      .find({ handle: { $in: ALL_HANDLES } })
+      .find({ handle: { $in: allHandles } })
       .sort({ creationTimeSeconds: -1 })
       .limit(limit)
       .lean();
