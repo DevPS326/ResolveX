@@ -2,6 +2,7 @@ const LEVEL_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2, NONE: 3 };
 
 function evidenceLabel(evidence) {
   if (!evidence) return 'no rated evidence';
+  if (evidence.comparisonRating) return `benchmark ${evidence.comparisonRating}`;
   if (evidence.q75Rating) return `q75 ${evidence.q75Rating}`;
   return `${evidence.solvedCount || 0} solves`;
 }
