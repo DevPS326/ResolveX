@@ -3,7 +3,7 @@ export default function LearningTargets({ targets }) {
     return (
       <div className="training-queue">
         <h2>Today's Training</h2>
-        <div className="empty-state">No training targets yet — sync and run analytics.</div>
+        <div className="empty-state">No high-confidence training target from the current peer evidence.</div>
       </div>
     );
   }
@@ -28,6 +28,13 @@ export default function LearningTargets({ targets }) {
               {t.suggestedRating ? (
                 <span className="ti-rating">Suggested difficulty: {t.suggestedRating}</span>
               ) : <span />}
+              {(t.benchmarkPeer || t.confidence) && (
+                <span className="ti-rating">
+                  {t.benchmarkPeer ? `Benchmark: ${t.benchmarkPeer}` : ''}
+                  {t.benchmarkPeer && t.confidence ? ' · ' : ''}
+                  {t.confidence ? `${t.confidence.toLowerCase()} confidence` : ''}
+                </span>
+              )}
             </div>
           </div>
         ))}
